@@ -1,6 +1,6 @@
 # slackhooks-deals
 
-Hacked together really quickly.
+Hacked together really quickly. Polls Amazon API and posts to slack via incoming webhooks.
 
 Bot.js polls the "Available Prime-Exclusive Lightning Deals" applet.
 
