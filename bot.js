@@ -46,42 +46,47 @@ function requestMetaData() {
 }
 
 function requestDeals(idArray) {
-  var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDeals?nocache=' + Date.now();
+  try {
+    var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDeals?nocache=' + Date.now();
 
-  var dealTargets = idArray.map(function(id) {
-    return {"dealID": id}
-  })
+    var dealTargets = idArray.map(function(id) {
+      return {"dealID": id}
+    })
 
-  var dealForm = {
-    "requestMetadata":{
-      "marketplaceID":"ATVPDKIKX0DER",
-      "clientID":"goldbox"
-    },
-    "dealTargets": dealTargets,
-    "responseSize":"ALL",
-    "itemResponseSize":"NONE"
-  }
-
-  request.post({url: url, form: JSON.stringify(dealForm)}, function(err, httpResponse, body) {
-    var deals = JSON.parse(body).dealDetails;
-    var parsedDeals = [];
-    
-    for(deal in deals) {
-      if(!dealHistory[deal]) {
-        var parsedDeal = {
-          title: deals[deal].title,
-          price: deals[deal].minDealPrice,
-          image: deals[deal].primaryImage,
-          url: deals[deal].egressUrl
-        }
-
-        dealHistory[deal] = parsedDeal
-        parsedDeals.push(parsedDeal);        
-      }
+    var dealForm = {
+      "requestMetadata":{
+        "marketplaceID":"ATVPDKIKX0DER",
+        "clientID":"goldbox"
+      },
+      "dealTargets": dealTargets,
+      "responseSize":"ALL",
+      "itemResponseSize":"NONE"
     }
 
-    postDeals(parsedDeals);
-  })
+    request.post({url: url, form: JSON.stringify(dealForm)}, function(err, httpResponse, body) {
+      var deals = JSON.parse(body).dealDetails;
+      var parsedDeals = [];
+      
+      for(deal in deals) {
+        if(!dealHistory[deal]) {
+          var parsedDeal = {
+            title: deals[deal].title,
+            price: deals[deal].minDealPrice,
+            image: deals[deal].primaryImage,
+            url: deals[deal].egressUrl
+          }
+
+          dealHistory[deal] = parsedDeal
+          parsedDeals.push(parsedDeal);        
+        }
+      }
+
+      postDeals(parsedDeals);
+    })
+  } catch(err) {
+    console.log(err)
+  }
+
 }
 
 function postDeals(deals) {
@@ -93,10 +98,10 @@ function postDeals(deals) {
           }
         ],
         text: deal.image,
-        channel: '#slackbot-testing',
+        channel: '#amazon-deals',
         username: 'dealbot'
     });
   })
 }
 
-requestMetaData()
+setInterval(requestMetaData, 60000)
