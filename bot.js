@@ -109,21 +109,28 @@ function requestDeals(idArray) {
 }
 
 function postDeals(deals) {
-  console.log(deals.length)
-  deals.forEach(function(deal) {
-    slack.send({
-        attachments: [
-          {
-            title: '$' + deal.price + ' <' + deal.url + '|' + deal.title + '>'   
-          }
-        ],
-        text: deal.image,
-        channel: '#amazon-deals',
-        username: 'dealbot'
-    });
-  })
+  console.log(deals.length);
+  if(postFlag === true) {
+    deals.forEach(function(deal) {
+      slack.send({
+          attachments: [
+            {
+              title: '$' + deal.price + ' <' + deal.url + '|' + deal.title + '>'   
+            }
+          ],
+          text: deal.image,
+          channel: '#amazon-deals',
+          username: 'dealbot'
+      });
+    })    
+  }
 }
 
-requestMetaData()
-// setInterval(requestMetaData, 60000)
+var postFlag = false;
+requestMetaData();
+
+setInterval(function() {
+  postFlag = true;
+  requestMetaData()
+}, 60000)
 
