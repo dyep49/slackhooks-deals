@@ -1,13 +1,102 @@
 const Slack = require('node-slack');
 const request = require('request');
-const cheerio = require('cheerio');
 
 const webhooksUrl = process.env['SLACK_WEBHOOKS_URL'];
+const slack = new Slack(webhooksUrl);
 
-var slack = new Slack(webhooksUrl);
+var dealHistory = {}
 
-slack.send({
-    text: 'http://static.guim.co.uk/sys-images/Guardian/Pix/pictures/2014/10/3/1412342672839/Just-cos-Im-small---Pluto-014.jpg',
-    channel: '#slackbot-testing',
-    username: 'dealbot'
-});
+
+const metadataForm = {
+  "requestMetadata":{
+    "marketplaceID":"ATVPDKIKX0DER",
+    "clientID":"goldbox"
+  },
+  "widgetContext":{
+    "pageType":"Landing",
+    "subPageType":"hybrid-batch-btf",
+    "deviceType":"pc","refRID":"0JBKHZKQH2QD1PVFSX04",
+    "widgetID":"2131369262",
+    "slotName":"merchandised-search-5"
+  },
+  "page":1,
+  "dealsPerPage":8,
+  "itemResponseSize":"NONE",
+  "queryProfile":{
+    "featuredOnly":false,
+    "dealTypes":["LIGHTNING_DEAL"],
+    "inclusiveTargetValues": [{
+      "name":"MARKETING_ID",
+      "value":"pinatatopLDs"
+    }],
+    "excludedExtendedFilters":{
+      "MARKETING_ID":["bfexclude","restrictedcontent","kindledotd715"]
+    }
+  }
+}
+
+
+function requestMetaData() {
+  var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDealMetadata?nocache=' + Date.now();
+
+  request.post({url: url, form: JSON.stringify(metadataForm)}, function(err, httpResponse, body) {
+    var availableDeals = JSON.parse(body).dealsByState.AVAILABLE
+    requestDeals(availableDeals)
+  })
+}
+
+function requestDeals(idArray) {
+  var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDeals?nocache=' + Date.now();
+
+  var dealTargets = idArray.map(function(id) {
+    return {"dealID": id}
+  })
+
+  var dealForm = {
+    "requestMetadata":{
+      "marketplaceID":"ATVPDKIKX0DER",
+      "clientID":"goldbox"
+    },
+    "dealTargets": dealTargets,
+    "responseSize":"ALL",
+    "itemResponseSize":"NONE"
+  }
+
+  request.post({url: url, form: JSON.stringify(dealForm)}, function(err, httpResponse, body) {
+    var deals = JSON.parse(body).dealDetails;
+    var parsedDeals = [];
+    
+    for(deal in deals) {
+      if(!dealHistory[deal]) {
+        var parsedDeal = {
+          title: deals[deal].title,
+          price: deals[deal].minDealPrice,
+          image: deals[deal].primaryImage,
+          url: deals[deal].egressUrl
+        }
+
+        dealHistory[deal] = parsedDeal
+        parsedDeals.push(parsedDeal);        
+      }
+    }
+
+    postDeals(parsedDeals);
+  })
+}
+
+function postDeals(deals) {
+  deals.forEach(function(deal) {
+    slack.send({
+        attachments: [
+          {
+            title: '$' + deal.price + ' <' + deal.url + '|' + deal.title + '>'   
+          }
+        ],
+        text: deal.image,
+        channel: '#slackbot-testing',
+        username: 'dealbot'
+    });
+  })
+}
+
+requestMetaData()
