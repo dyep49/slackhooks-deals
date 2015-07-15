@@ -55,7 +55,10 @@ function requestMetaData() {
 
   request.post({url: url, form: JSON.stringify(metadataForm)}, function(err, httpResponse, body) {
     var availableDeals = JSON.parse(body).dealsByState.AVAILABLE
-    requestDeals(availableDeals)
+    var newDeals = availableDeals.filter(function(deal) {
+      return dealHistory[deal] ? false : true;
+    })
+    requestDeals(newDeals)
   })
 }
 
@@ -64,7 +67,6 @@ function requestDeals(idArray) {
     var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDeals?nocache=' + Date.now();
 
     var dealTargets = idArray.map(function(id) {
-        if(dealHistory[id]) { return }
         return {"dealID": id}      
     })
 
@@ -110,7 +112,9 @@ function requestDeals(idArray) {
 
 function postDeals(deals) {
   console.log(deals.length);
+  console.log(postFlag)
   if(postFlag === true) {
+    console.log(postFlag);
     deals.forEach(function(deal) {
       slack.send({
           attachments: [
@@ -132,5 +136,5 @@ requestMetaData();
 setInterval(function() {
   postFlag = true;
   requestMetaData()
-}, 60000)
+}, 30000)
 
