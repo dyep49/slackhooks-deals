@@ -8,29 +8,43 @@ var dealHistory = {}
 
 
 const metadataForm = {
-  "requestMetadata":{
-    "marketplaceID":"ATVPDKIKX0DER",
-    "clientID":"goldbox"
+  "requestMetadata": {
+    "marketplaceID": "ATVPDKIKX0DER",
+    "customerID": "A2JK557SLQNPYZ",
+    "sessionID": "179-2337983-2433660",
+    "clientID": "goldbox"
   },
-  "widgetContext":{
-    "pageType":"Landing",
-    "subPageType":"hybrid-batch-btf",
-    "deviceType":"pc","refRID":"0JBKHZKQH2QD1PVFSX04",
-    "widgetID":"2131369262",
-    "slotName":"merchandised-search-5"
+  "widgetContext": {
+    "pageType": "Landing",
+    "subPageType": "hybrid-batch-btf",
+    "deviceType": "pc",
+    "refRID": "14GKY7BRYV4TTG158DWQ",
+    "widgetID": "2136336222",
+    "slotName": "merchandised-search-6"
   },
-  "page":1,
-  "dealsPerPage":8,
-  "itemResponseSize":"NONE",
-  "queryProfile":{
-    "featuredOnly":false,
-    "dealTypes":["LIGHTNING_DEAL"],
-    "inclusiveTargetValues": [{
-      "name":"MARKETING_ID",
-      "value":"pinatatopLDs"
-    }],
-    "excludedExtendedFilters":{
-      "MARKETING_ID":["bfexclude","restrictedcontent","kindledotd715"]
+  "page": 1,
+  "dealsPerPage": 16,
+  "itemResponseSize": "NONE",
+  "queryProfile": {
+    "featuredOnly": false,
+    "dealStates": [
+      "AVAILABLE"
+    ],
+    "dealTypes": [
+      "LIGHTNING_DEAL"
+    ],
+    "inclusiveTargetValues": [
+      {
+        "name": "MARKETING_ID",
+        "value": "PRIME_ONLY_LD"
+      }
+    ],
+    "excludedExtendedFilters": {
+      "MARKETING_ID": [
+        "bfexclude",
+        "restrictedcontent",
+        "kindledotd715"
+      ]
     }
   }
 }
@@ -50,25 +64,30 @@ function requestDeals(idArray) {
     var url = 'http://www.amazon.com/xa/dealcontent/v2/GetDeals?nocache=' + Date.now();
 
     var dealTargets = idArray.map(function(id) {
-      return {"dealID": id}
+        if(dealHistory[id]) { return }
+        return {"dealID": id}      
     })
 
-    var dealForm = {
-      "requestMetadata":{
-        "marketplaceID":"ATVPDKIKX0DER",
-        "clientID":"goldbox"
-      },
-      "dealTargets": dealTargets,
-      "responseSize":"ALL",
-      "itemResponseSize":"NONE"
-    }
+    console.log(dealTargets.length);
 
-    request.post({url: url, form: JSON.stringify(dealForm)}, function(err, httpResponse, body) {
-      var deals = JSON.parse(body).dealDetails;
-      var parsedDeals = [];
-      
-      for(deal in deals) {
-        if(!dealHistory[deal]) {
+    while(dealTargets.length > 0) {
+      var dealForm = {
+        "requestMetadata":{
+          "marketplaceID":"ATVPDKIKX0DER",
+          "clientID":"goldbox"
+        },
+        "dealTargets": dealTargets.slice(0, 200),
+        "responseSize":"ALL",
+        "itemResponseSize":"NONE"
+      }
+
+      dealTargets.splice(0, 200)
+
+      request.post({url: url, form: JSON.stringify(dealForm)}, function(err, httpResponse, body) {
+        var deals = JSON.parse(body).dealDetails;
+        var parsedDeals = [];
+        
+        for(deal in deals) {
           var parsedDeal = {
             title: deals[deal].title,
             price: deals[deal].minDealPrice,
@@ -79,10 +98,10 @@ function requestDeals(idArray) {
           dealHistory[deal] = parsedDeal
           parsedDeals.push(parsedDeal);        
         }
-      }
 
-      postDeals(parsedDeals);
-    })
+        postDeals(parsedDeals);
+      })
+    }
   } catch(err) {
     console.log(err)
   }
@@ -90,18 +109,21 @@ function requestDeals(idArray) {
 }
 
 function postDeals(deals) {
-  deals.forEach(function(deal) {
-    slack.send({
-        attachments: [
-          {
-            title: '$' + deal.price + ' <' + deal.url + '|' + deal.title + '>'   
-          }
-        ],
-        text: deal.image,
-        channel: '#amazon-deals',
-        username: 'dealbot'
-    });
-  })
+  console.log(deals.length)
+  // deals.forEach(function(deal) {
+  //   slack.send({
+  //       attachments: [
+  //         {
+  //           title: '$' + deal.price + ' <' + deal.url + '|' + deal.title + '>'   
+  //         }
+  //       ],
+  //       text: deal.image,
+  //       channel: '#amazon-deals',
+  //       username: 'dealbot'
+  //   });
+  // })
 }
 
-setInterval(requestMetaData, 60000)
+requestMetaData()
+// setInterval(requestMetaData, 60000)
+
